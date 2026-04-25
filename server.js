@@ -1,104 +1,141 @@
-const express = require("express");
-const { createServer } = require("http");
-const { Server } = require("socket.io");
-const path = require("path");
-const cors = require("cors");
-const users = [];
+var port = parseInt(process.env.PORT, 10) || 8080;
 
-const app = express();
-const httpServer = createServer(app);
+function startDiagnosticServer(err) {
+  var http = require("http");
+  var details = (err && err.stack) ? err.stack : String(err);
+  http.createServer(function (req, res) {
+    res.statusCode = 500;
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.end("Chat2026 startup error\n\n" + details);
+  }).listen(port, function () {
+    console.error("Startup failed. Diagnostic server listening on port " + port);
+    console.error(details);
+  });
+}
 
-const allowedOrigins = [
-  "https://chriscalver.com:8080",
-  "http://chriscalver.com",
-  "http://127.0.0.1:5556",
-  "http://127.0.0.1:8080",
-  "http://laptop:8080",
-  "http://laptop:5556",
-  "http://localhost:8080",
-  "http://localhost:5556",
-  "http://StudioPC",
-  "http://laptop",
-];
+try {
+  var express = require("express");
+  var createServer = require("http").createServer;
+  var Server = require("socket.io").Server;
+  var path = require("path");
+  var cors = require("cors");
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
+  var users = [];
+  var publicDir = path.join(__dirname, "public");
+  var app = express();
+  var httpServer = createServer(app);
+  var socketPath = process.env.SOCKET_IO_PATH || "/socket.io";
+
+  var allowedOrigins = [
+    "https://www.chriscalver.com",
+    "https://chriscalver.com",
+    "http://www.chriscalver.com",
+    "http://chriscalver.com"
+  ];
+
+  function isUserNameInUse(name) {
+    var i;
+    for (i = 0; i < users.length; i += 1) {
+      if (users[i].name === name) {
+        return true;
+      }
     }
-  },
-};
+    return false;
+  }
 
-app.use(cors(corsOptions));
-app.use(express.static(path.join(__dirname, "public")));
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-const io = new Server(httpServer, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ["GET", "POST"],
-    credentials: true,
-  },
-});
-
-io.on("connection", (socket) => {
-  socket.on("user:join", (name) => {
-    if (!users.some((user) => user.name === name)) {
-      users.push({ name, socketId: socket.id });
+  function findUserBySocketId(socketId) {
+    var i;
+    for (i = 0; i < users.length; i += 1) {
+      if (users[i].socketId === socketId) {
+        return users[i];
+      }
     }
-    io.emit("global:message", `${name} just joined`);
-    console.log("System Message: " + name + " just joined");
+    return null;
+  }
 
-    console.log(users);
+  var corsOptions = {
+    origin: function (origin, callback) {
+      if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    }
+  };
+
+  app.use(cors(corsOptions));
+  app.use(express.static(publicDir));
+  app.use("/chat2026", express.static(publicDir));
+
+  app.get(["/", "/chat2026", "/chat2026/"], function (req, res) {
+    res.sendFile(path.join(publicDir, "index.html"));
   });
 
-  socket.on("message:send", (payload) => {
-    socket.broadcast.emit("message:receive", payload);
-    console.log(`${payload.name} says: ${payload.message}`);
-    console.log(users);
-    io.fetchSockets()
-        .then((sockets) => {
-          sockets.forEach((socket) => {
-            console.log(socket.id);
+  var io = new Server(httpServer, {
+    path: socketPath,
+    cors: {
+      origin: allowedOrigins,
+      methods: ["GET", "POST"],
+      credentials: true
+    }
+  });
+
+  io.on("connection", function (socket) {
+    socket.on("user:join", function (name) {
+      if (!isUserNameInUse(name)) {
+        users.push({ name: name, socketId: socket.id });
+      }
+
+      io.emit("global:message", name + " just joined");
+      console.log("System Message: " + name + " just joined");
+      console.log(users);
+    });
+
+    socket.on("message:send", function (payload) {
+      socket.broadcast.emit("message:receive", payload);
+      console.log(payload.name + " says: " + payload.message);
+      console.log(users);
+
+      io.fetchSockets()
+        .then(function (sockets) {
+          sockets.forEach(function (connectedSocket) {
+            console.log(connectedSocket.id);
           });
         })
-        .catch(console.log);
-  });
+        .catch(function (error) {
+          console.log(error);
+        });
+    });
 
-  socket.on("disconnect", () => {
-    const user = users.find((user) => user.socketId === socket.id);
-    if (user) {
-      io.emit("global:message", `${user.name} just left`);
+    socket.on("disconnect", function () {
+      var user = findUserBySocketId(socket.id);
 
-      console.log(`System Message: ${user.name} just left`);
+      if (!user) {
+        return;
+      }
 
-      socket.disconnect();
+      io.emit("global:message", user.name + " just left");
+      console.log("System Message: " + user.name + " just left");
 
       users.splice(users.indexOf(user), 1);
       console.log(users);
       console.log(socket.id);
 
       io.fetchSockets()
-        .then((sockets) => {
-          sockets.forEach((socket) => {
-            console.log(socket.id);
+        .then(function (sockets) {
+          sockets.forEach(function (connectedSocket) {
+            console.log(connectedSocket.id);
           });
         })
-        .catch(console.log);
-      // console.log(clients);
-    }
+        .catch(function (error) {
+          console.log(error);
+        });
+    });
   });
-  // socket.on("disconnect", () => {
-  //   const user = users.filter((user) => user.sockeId === socket.id);
-  //   io.emit("global:message", `${user[0].name} just left`);
-  //   console.log(`System Message: ${user[0].name} just left`);
-  // });
-});
 
-const port = 8080;
-httpServer.listen(port, () => console.log(`Listening on port ${port}...`));
+  httpServer.listen(port, function () {
+    console.log("Listening on port " + port + "...");
+  });
+} catch (err) {
+  startDiagnosticServer(err);
+}

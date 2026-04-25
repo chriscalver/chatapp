@@ -1,8 +1,7 @@
-// const socket = io('https://chriscalver.com:8080');
-const socket = io('http://localhost:8080');
+const socket = io({
+    path: "/socket.io",
+});
 
-
-// const socket = io();
 const messages = document.getElementById("messages");
 const form = document.getElementById("form");
 const input = document.getElementById("input");
