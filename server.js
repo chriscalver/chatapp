@@ -11,6 +11,8 @@ const httpServer = createServer(app);
 const allowedOrigins = [
   "https://chriscalver.com:8080",
   "http://chriscalver.com",
+  "http://127.0.0.1:5556",
+  "http://127.0.0.1:8080",
   "http://laptop:8080",
   "http://laptop:5556",
   "http://localhost:8080",
@@ -36,7 +38,13 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-const io = new Server(httpServer);
+const io = new Server(httpServer, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
 
 io.on("connection", (socket) => {
   socket.on("user:join", (name) => {

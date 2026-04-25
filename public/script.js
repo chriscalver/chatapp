@@ -1,5 +1,5 @@
-const socket = io('https://chriscalver.com:8080');
-// const socket = io('http://laptop:5000');
+// const socket = io('https://chriscalver.com:8080');
+const socket = io('http://localhost:8080');
 
 
 // const socket = io();
