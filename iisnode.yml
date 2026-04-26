@@ -1,0 +1,3 @@
+# Replace YOUR_FTP_USERNAME with your actual Winhost FTP username.
+# Keep app_data in lowercase, matching Winhost examples.
+nodeProcessCommandLine: "E:\\web\\chriscal\\chat2026\\app_data\\node.exe"

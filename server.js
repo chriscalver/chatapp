@@ -1,4 +1,4 @@
-var port = parseInt(process.env.PORT, 10) || 8080;
+var port = process.env.PORT || 8080;
 
 function startDiagnosticServer(err) {
   var http = require("http");
@@ -24,13 +24,18 @@ try {
   var publicDir = path.join(__dirname, "public");
   var app = express();
   var httpServer = createServer(app);
-  var socketPath = process.env.SOCKET_IO_PATH || "/socket.io";
+  var isIisNamedPipe = typeof process.env.PORT === "string" && process.env.PORT.indexOf("\\\\.\\pipe\\") === 0;
+  var socketPath = process.env.SOCKET_IO_PATH || (isIisNamedPipe ? "/chat2026/socket.io" : "/socket.io");
 
   var allowedOrigins = [
     "https://www.chriscalver.com",
     "https://chriscalver.com",
     "http://www.chriscalver.com",
-    "http://chriscalver.com"
+    "http://chriscalver.com",
+    "http://localhost:8080",
+    "http://localhost:8081",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1:8081"
   ];
 
   function isUserNameInUse(name) {
@@ -51,6 +56,14 @@ try {
       }
     }
     return null;
+  }
+
+  function logCurrentUsers(contextLabel) {
+    var names = users.map(function (user) {
+      return user.name;
+    });
+
+    console.log("Current people in chat" + (contextLabel ? " (" + contextLabel + ")" : "") + ":", names.length ? names.join(", ") : "none");
   }
 
   var corsOptions = {
@@ -82,19 +95,46 @@ try {
 
   io.on("connection", function (socket) {
     socket.on("user:join", function (name) {
-      if (!isUserNameInUse(name)) {
-        users.push({ name: name, socketId: socket.id });
+      var requestedName = (typeof name === "string" ? name.trim() : "");
+      var existingUser = findUserBySocketId(socket.id);
+
+      if (!requestedName) {
+        socket.emit("user:join:error", "Please enter a valid username.");
+        return;
       }
 
-      io.emit("global:message", name + " just joined");
-      console.log("System Message: " + name + " just joined");
-      console.log(users);
+      if (existingUser) {
+        socket.emit("user:join:ok", existingUser.name);
+        return;
+      }
+
+      if (isUserNameInUse(requestedName)) {
+        socket.emit("user:join:error", "That username is already in use. Pick a different one.");
+        return;
+      }
+
+      users.push({ name: requestedName, socketId: socket.id });
+      socket.emit("user:join:ok", requestedName);
+
+      io.emit("global:message", requestedName + " just joined");
+      console.log("System Message: " + requestedName + " just joined");
+      logCurrentUsers("after join");
     });
 
     socket.on("message:send", function (payload) {
-      socket.broadcast.emit("message:receive", payload);
-      console.log(payload.name + " says: " + payload.message);
-      console.log(users);
+      var user = findUserBySocketId(socket.id);
+      var message = payload && typeof payload.message === "string" ? payload.message.trim() : "";
+      var serverPayload;
+
+      if (!user || !message) {
+        return;
+      }
+
+      serverPayload = { name: user.name, message: message };
+
+      socket.broadcast.emit("message:receive", serverPayload);
+      console.log(serverPayload.name + " says: " + serverPayload.message);
+      logCurrentUsers("during message");
 
       io.fetchSockets()
         .then(function (sockets) {
@@ -107,18 +147,20 @@ try {
         });
     });
 
-    socket.on("disconnect", function () {
+    socket.on("disconnect", function (reason) {
       var user = findUserBySocketId(socket.id);
 
       if (!user) {
+        console.log("Disconnect for unknown socket " + socket.id + " (reason: " + reason + ")");
         return;
       }
 
       io.emit("global:message", user.name + " just left");
       console.log("System Message: " + user.name + " just left");
+      console.log("Disconnect reason for " + user.name + ": " + reason);
 
       users.splice(users.indexOf(user), 1);
-      console.log(users);
+      logCurrentUsers("after disconnect");
       console.log(socket.id);
 
       io.fetchSockets()

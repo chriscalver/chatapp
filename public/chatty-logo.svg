@@ -1,0 +1,28 @@
+<svg width="220" height="220" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Chatty Logo</title>
+  <desc id="desc">Two overlapping chat bubbles with a subtle gradient.</desc>
+  <defs>
+    <linearGradient id="bubbleGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B8A7E"/>
+      <stop offset="100%" stop-color="#075E54"/>
+    </linearGradient>
+    <linearGradient id="bubbleLight" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E8FFF7"/>
+      <stop offset="100%" stop-color="#D4F8EA"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="24" y="36" width="138" height="102" rx="20" fill="url(#bubbleGradient)"/>
+  <path d="M62 138 L76 166 L96 138 Z" fill="#075E54"/>
+
+  <rect x="76" y="82" width="120" height="84" rx="18" fill="url(#bubbleLight)" stroke="#0B8A7E" stroke-width="4"/>
+  <path d="M156 166 L172 188 L182 166 Z" fill="#D4F8EA" stroke="#0B8A7E" stroke-width="4"/>
+
+  <circle cx="72" cy="86" r="7" fill="#E8FFF7"/>
+  <circle cx="94" cy="86" r="7" fill="#E8FFF7"/>
+  <circle cx="116" cy="86" r="7" fill="#E8FFF7"/>
+
+  <circle cx="112" cy="124" r="6" fill="#0B8A7E"/>
+  <circle cx="132" cy="124" r="6" fill="#0B8A7E"/>
+  <circle cx="152" cy="124" r="6" fill="#0B8A7E"/>
+</svg>

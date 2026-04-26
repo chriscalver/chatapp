@@ -9,6 +9,35 @@ body {
 	height: 100vh;
 }
 
+.brand_header {
+	width: 600px;
+	margin-top: 24px;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	justify-content: flex-start;
+	align-items: center;
+	gap: 12px;
+}
+
+.brand_mark {
+	width: 194px;
+	height: 194px;
+	flex: 0 0 auto;
+}
+
+.brand_logo {
+	margin: 0;
+	display: inline-block;
+	white-space: nowrap;
+	font-size: 34px;
+	line-height: 1;
+	font-weight: 800;
+	letter-spacing: 1px;
+	color: #075e54;
+	text-transform: uppercase;
+}
+
 .messages_container {
 	width: 600px;
 	height: 500px;
@@ -112,4 +141,16 @@ body {
 	border: none;
 	font-size: 16px;
 	cursor: pointer;
+}
+
+@media (max-width: 640px) {
+	.brand_header,
+	.messages_container,
+	.input_container {
+		width: calc(100vw - 24px);
+	}
+
+	.brand_logo {
+		font-size: 24px;
+	}
 }
